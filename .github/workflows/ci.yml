@@ -86,3 +86,52 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-and-verify:
+    name: Deploy and Verify
+    needs: build-and-push
+    if: startsWith(github.ref, 'refs/tags/') # Запускається ТІЛЬКИ на анотовані теги
+    runs-on: self-hosted 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Target Node
+        run: |
+          # Вказуємо IP твоєї цільової машини
+          TARGET="slava-target-node@192.168.0.142"
+          
+          echo "Копіювання systemd-unit..."
+          scp scripts/mywebapp.service $TARGET:/tmp/mywebapp.service
+          
+          echo "Налаштування сервісу на Target Node..."
+          ssh $TARGET "sudo mv /tmp/mywebapp.service /etc/systemd/system/mywebapp.service"
+          ssh $TARGET "sudo systemctl daemon-reload"
+          
+          # Вимикаємо старий сокет з Лаби 1, якщо він досі активний
+          ssh $TARGET "sudo systemctl stop mywebapp.socket || true"
+          ssh $TARGET "sudo systemctl disable mywebapp.socket || true"
+          
+          echo "Перезапуск контейнера..."
+          ssh $TARGET "sudo systemctl enable mywebapp.service"
+          ssh $TARGET "sudo systemctl restart mywebapp.service"
+
+      - name: Verify Deployment
+        run: |
+          TARGET_IP="192.168.0.142"
+          TARGET="slava-target-node@$TARGET_IP"
+          
+          echo "Очікування запуску контейнера (5 секунд)..."
+          sleep 5
+          
+          echo "1. Перевірка Nginx..."
+          ssh $TARGET "sudo nginx -t"
+          
+          echo "2. Перевірка доступності сервісу (HTTP 200)..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$TARGET_IP/health/alive || echo "failed")
+          
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Верифікація неуспішна! Отримано статус: $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Верифікація успішна! Сервіс працює і відповідає."
