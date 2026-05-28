@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:10.11
+    container_name: lab1-db
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpassword
+      MARIADB_DATABASE: simple_inventory
+      MARIADB_USER: app
+      MARIADB_PASSWORD: password
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app_network
+
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: lab1-web
+    restart: always
+    depends_on:
+      - db
+    command: ["node", "app.js", "--db-host=db", "--db-user=app", "--db-pass=password", "--db-name=simple_inventory", "--port=8080"]
+    networks:
+      - app_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: lab1-nginx
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  db_data:
