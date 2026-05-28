@@ -1,6 +1,6 @@
 [Unit]
 Description=My Simple Inventory Container
-After=docker.service network.target
+After=docker.service network.target mariadb.service
 Requires=docker.service
 
 [Service]
@@ -9,7 +9,11 @@ Restart=always
 ExecStartPre=-/usr/bin/docker stop mywebapp
 ExecStartPre=-/usr/bin/docker rm mywebapp
 ExecStartPre=/usr/bin/docker pull ghcr.io/slavareborn/lab3-software-deployment:stable
-ExecStart=/usr/bin/docker run --name mywebapp -p 8080:8080 ghcr.io/slavareborn/lab3-software-deployment:stable
+
+ExecStartPre=/usr/bin/docker run --rm --network host ghcr.io/slavareborn/lab3-software-deployment:stable node migrate.js --db-user=app --db-pass=password
+
+ExecStart=/usr/bin/docker run --name mywebapp --network host ghcr.io/slavareborn/lab3-software-deployment:stable node app.js --db-user=app --db-pass=password
+
 ExecStop=/usr/bin/docker stop mywebapp
 
 [Install]
