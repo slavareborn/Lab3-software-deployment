@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 
 echo "=== Початок розгортання Simple Inventory ==="
@@ -7,13 +9,13 @@ echo "1. Створення користувачів..."
 id -u student &>/dev/null || useradd -m -s /bin/bash -G sudo student
 
 id -u teacher &>/dev/null || useradd -m -s /bin/bash -G sudo teacher
-usermod -p $(openssl passwd -1 12345678) teacher
+usermod -p "$(openssl passwd -1 12345678)" teacher
 chage -d 0 teacher
 
 id -u app &>/dev/null || useradd -r -s /bin/false app
 
 id -u operator &>/dev/null || useradd -m -s /bin/bash -g operator operator 2>/dev/null || useradd -m -s /bin/bash operator
-usermod -p $(openssl passwd -1 12345678) operator
+usermod -p "$(openssl passwd -1 12345678)" operator
 chage -d 0 operator
 
 echo "operator ALL=(ALL) NOPASSWD: /bin/systemctl start mywebapp, /bin/systemctl stop mywebapp, /bin/systemctl restart mywebapp, /bin/systemctl status mywebapp, /bin/systemctl reload nginx" > /etc/sudoers.d/operator
